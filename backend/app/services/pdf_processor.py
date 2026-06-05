@@ -12,18 +12,15 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     return "\n".join(pages_text)
 
 
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150) -> list[str]:
-    """
-    Divide el texto en chunks respetando limites de oraciones.
-    chunk_size=800 funciona bien para documentos en espanol.
-    overlap=150 mantiene contexto entre chunks consecutivos.
-    """
+def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150, max_chars: int = 500_000) -> list[str]:
     text = " ".join(text.split())
+    if len(text) > max_chars:
+        text = text[:max_chars]
     chunks = []
     start = 0
 
     while start < len(text):
-        end = start + chunk_size
+        end = min(start + chunk_size, len(text))
 
         if end < len(text):
             for sep in [". ", "! ", "? ", "\n\n", "\n", "; "]:
@@ -31,12 +28,13 @@ def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150) -> list[str
                 if pos != -1:
                     end = pos + len(sep)
                     break
-        else:
-            end = len(text)
 
         chunk = text[start:end].strip()
         if chunk:
             chunks.append(chunk)
+
+        if end >= len(text):
+            break
 
         start = end - overlap
 

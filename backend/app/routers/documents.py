@@ -1,10 +1,12 @@
 ﻿from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import asyncio
 from app.database import get_db
 from app.models.document import Document, DocumentChunk
 from app.schemas.document import DocumentResponse, DocumentDetailResponse
 from app.services.pdf_processor import extract_text_from_pdf, chunk_text
+from app.services.embeddings import embed_texts
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -17,7 +19,10 @@ async def upload_document(
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Solo se aceptan archivos PDF")
 
+    MAX_SIZE_MB = 15
     contents = await file.read()
+    if len(contents) > MAX_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"El PDF no puede superar {MAX_SIZE_MB} MB")
     text = extract_text_from_pdf(contents)
 
     if not text.strip():
@@ -25,13 +30,16 @@ async def upload_document(
 
     chunks = chunk_text(text)
 
+    # embed_texts es CPU-bound, lo corremos en un thread para no bloquear el event loop
+    embeddings = await asyncio.get_event_loop().run_in_executor(None, embed_texts, chunks)
+
     document = Document(filename=file.filename, total_chunks=len(chunks))
     db.add(document)
     await db.flush()
 
     db.add_all([
-        DocumentChunk(document_id=document.id, content=chunk, chunk_index=i)
-        for i, chunk in enumerate(chunks)
+        DocumentChunk(document_id=document.id, content=chunk, chunk_index=i, embedding=emb)
+        for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
     ])
 
     await db.commit()
