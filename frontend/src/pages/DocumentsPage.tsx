@@ -42,7 +42,7 @@ export default function DocumentsPage() {
     } finally { setUploading(false); setUploadProgress(0) }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     await documentsApi.remove(id)
     setDocs(prev => prev.filter(d => d.id !== id))
   }
@@ -169,7 +169,7 @@ export default function DocumentsPage() {
                               <span className="text-[11px] font-mono uppercase">{s.label}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-[12px] font-mono text-[#45464d]">{doc.chunk_count}</td>
+                          <td className="px-6 py-4 text-[12px] font-mono text-[#45464d]">{doc.total_chunks}</td>
                           <td className="px-6 py-4 text-[13px] text-[#45464d]">{fmt(doc.created_at)}</td>
                           <td className="px-6 py-4">
                             <button onClick={() => handleDelete(doc.id)}

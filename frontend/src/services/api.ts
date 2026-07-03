@@ -3,17 +3,18 @@ import axios from 'axios'
 const api = axios.create({ baseURL: '/api' })
 
 export interface Document {
-  id: number
+  id: string
   filename: string
   status: 'processing' | 'ready' | 'failed'
-  chunk_count: number
+  total_chunks: number
   created_at: string
-  file_size?: number
 }
 
 export interface Source {
-  document_id: number
+  chunk_id: string
+  document_id: string
   filename: string
+  content: string
   chunk_index: number
   similarity: number
 }
@@ -22,19 +23,20 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   sources?: Source[]
+  created_at?: string
 }
 
 export interface Conversation {
-  id: number
-  title: string
+  id: string
+  title: string | null
   created_at: string
   messages: ChatMessage[]
 }
 
 export interface ChatResponse {
-  response: string
+  answer: string
   sources: Source[]
-  conversation_id: number
+  conversation_id: string
 }
 
 export const documentsApi = {
@@ -49,15 +51,26 @@ export const documentsApi = {
       },
     }).then(r => r.data)
   },
-  remove: (id: number) => api.delete(`/documents/${id}`),
+  remove: (id: string) => api.delete(`/documents/${id}`),
+  reindex: () => api.post<{ reindexed: number }>('/documents/reindex').then(r => r.data),
+}
+
+export const searchApi = {
+  query: (q: string, topK = 5) =>
+    api.post<{ query: string; results: Source[] }>('/search/', { query: q, top_k: topK }).then(r => r.data),
 }
 
 export const chatApi = {
   conversations: () => api.get<Conversation[]>('/chat/conversations').then(r => r.data),
-  send: (message: string, conversationId?: number, documentIds?: number[]) =>
+  getConversation: (id: string) => api.get<Conversation>(`/chat/conversations/${id}`).then(r => r.data),
+  send: (query: string, conversationId?: string, documentId?: string) =>
     api.post<ChatResponse>('/chat/', {
-      message,
-      conversation_id: conversationId,
-      document_ids: documentIds,
+      query,
+      conversation_id: conversationId ?? null,
+      document_id: documentId ?? null,
     }).then(r => r.data),
+}
+
+export const healthApi = {
+  check: () => api.get<{ status: string }>('/health').then(r => r.data),
 }
