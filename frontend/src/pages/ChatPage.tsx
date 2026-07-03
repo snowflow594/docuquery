@@ -6,7 +6,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [conversationId, setConversationId] = useState<number | undefined>()
+  const [conversationId, setConversationId] = useState<string | undefined>()
+  const [previewSource, setPreviewSource] = useState<Source | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -31,7 +32,7 @@ export default function ChatPage() {
     try {
       const res = await chatApi.send(text, conversationId)
       setConversationId(res.conversation_id)
-      setMessages(prev => [...prev, { role: 'assistant', content: res.response, sources: res.sources }])
+      setMessages(prev => [...prev, { role: 'assistant', content: res.answer, sources: res.sources }])
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Error al procesar. Intenta de nuevo.' }])
     } finally {
@@ -41,6 +42,10 @@ export default function ChatPage() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+  }
+
+  const handleSourceClick = (s: Source) => {
+    setPreviewSource(prev => prev?.chunk_id === s.chunk_id ? null : s)
   }
 
   return (
@@ -79,12 +84,21 @@ export default function ChatPage() {
                     </div>
                     <p className="text-[14px] text-[#0b1c30] whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                     {msg.sources && msg.sources.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-2">
+                      <div className="flex flex-wrap gap-2 pt-2 border-t border-[#e5eeff]">
+                        <span className="text-[10px] uppercase tracking-widest text-[#45464d] w-full">Fuentes</span>
                         {msg.sources.map((s: Source, si: number) => (
-                          <div key={si} className="flex items-center gap-1 px-3 py-1 bg-[#dce9ff] border border-[#c6c6cd] rounded-full">
+                          <button
+                            key={si}
+                            onClick={() => handleSourceClick(s)}
+                            className={`flex items-center gap-1 px-3 py-1 border rounded-full transition-colors text-left ${
+                              previewSource?.chunk_id === s.chunk_id
+                                ? 'bg-[#131b2e] border-[#131b2e] text-white'
+                                : 'bg-[#dce9ff] border-[#c6c6cd] hover:border-black'
+                            }`}
+                          >
                             <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
                             <span className="text-[11px] font-mono">[{si + 1}] {s.filename}</span>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -130,17 +144,48 @@ export default function ChatPage() {
           </div>
         </section>
 
+        {/* Vista Previa panel */}
         <aside className="w-[340px] bg-white flex-col shrink-0 hidden xl:flex border-l border-[#c6c6cd]">
-          <div className="h-14 px-4 flex items-center gap-2 border-b border-[#c6c6cd]">
-            <span className="material-symbols-outlined text-black">description</span>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#45464d]">Vista Previa</span>
-          </div>
-          <div className="flex-1 flex items-center justify-center bg-[#f8f9ff]">
-            <div className="text-center text-[#45464d]">
-              <span className="material-symbols-outlined text-[48px] opacity-30">picture_as_pdf</span>
-              <p className="text-[13px] mt-2 opacity-50">Selecciona una fuente para verla aquí</p>
+          <div className="h-14 px-4 flex items-center justify-between border-b border-[#c6c6cd]">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-black">description</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#45464d]">Vista Previa</span>
             </div>
+            {previewSource && (
+              <button onClick={() => setPreviewSource(null)} className="text-[#45464d] hover:text-black">
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            )}
           </div>
+
+          {previewSource ? (
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="p-4 border-b border-[#e5eeff] bg-[#f8f9ff]">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="material-symbols-outlined text-[#497cff] text-[18px]">picture_as_pdf</span>
+                  <span className="text-[13px] font-semibold text-[#0b1c30] truncate">{previewSource.filename}</span>
+                </div>
+                <div className="flex gap-3 mt-2">
+                  <span className="text-[10px] font-mono bg-[#dce9ff] px-2 py-0.5 rounded text-[#45464d]">
+                    chunk #{previewSource.chunk_index}
+                  </span>
+                  <span className="text-[10px] font-mono bg-[#e5eeff] px-2 py-0.5 rounded text-[#45464d]">
+                    sim {(previewSource.similarity * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+              <div className="p-4">
+                <p className="text-[13px] text-[#0b1c30] leading-relaxed whitespace-pre-wrap">{previewSource.content}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center bg-[#f8f9ff]">
+              <div className="text-center text-[#45464d]">
+                <span className="material-symbols-outlined text-[48px] opacity-30">picture_as_pdf</span>
+                <p className="text-[13px] mt-2 opacity-50">Haz click en una fuente<br />para ver el fragmento</p>
+              </div>
+            </div>
+          )}
         </aside>
       </main>
     </div>

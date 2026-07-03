@@ -1,6 +1,6 @@
 ﻿from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class DocumentResponse(BaseModel):
@@ -8,6 +8,11 @@ class DocumentResponse(BaseModel):
     filename: str
     total_chunks: int
     created_at: datetime
+
+    @computed_field
+    @property
+    def status(self) -> str:
+        return "ready" if self.total_chunks > 0 else "failed"
 
     model_config = {"from_attributes": True}
 

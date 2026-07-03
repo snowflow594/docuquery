@@ -64,3 +64,20 @@ async def get_document(document_id: str, db: AsyncSession = Depends(get_db)):
     if not document:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
     return document
+
+
+@router.post("/reindex")
+async def reindex_documents(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(DocumentChunk))
+    chunks = result.scalars().all()
+    if not chunks:
+        return {"reindexed": 0}
+
+    texts = [c.content for c in chunks]
+    embeddings = await asyncio.get_event_loop().run_in_executor(None, embed_texts, texts)
+
+    for chunk, emb in zip(chunks, embeddings):
+        chunk.embedding = emb
+
+    await db.commit()
+    return {"reindexed": len(chunks)}
