@@ -7,3 +7,5 @@ venv/
 *.pyc
 .DS_Store
 uploads/
+.claude/
+*.stackdump
