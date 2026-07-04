@@ -9,7 +9,8 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         text = page.extract_text()
         if text:
             pages_text.append(text)
-    return "\n".join(pages_text)
+    # PostgreSQL rechaza bytes NUL (\x00) en campos TEXT; algunos PDFs los contienen
+    return "\n".join(pages_text).replace("\x00", "")
 
 
 def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150, max_chars: int = 500_000) -> list[str]:
