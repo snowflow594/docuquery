@@ -1,19 +1,19 @@
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
-_model: SentenceTransformer | None = None
+# BAAI/bge-small-en-v1.5: 384 dims, ONNX runtime (~150MB total vs ~400MB con PyTorch)
+_model: TextEmbedding | None = None
 
 
-def _get_model() -> SentenceTransformer:
+def _get_model() -> TextEmbedding:
     global _model
     if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        _model = TextEmbedding("BAAI/bge-small-en-v1.5")
     return _model
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     model = _get_model()
-    embeddings = model.encode(texts, normalize_embeddings=True, batch_size=32, show_progress_bar=False)
-    return embeddings.tolist()
+    return [emb.tolist() for emb in model.embed(texts)]
 
 
 def embed_query(text: str) -> list[float]:
