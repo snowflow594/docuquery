@@ -55,7 +55,7 @@ export default function ChatPage() {
         <section className="flex-1 flex flex-col bg-[#f8f9ff] overflow-hidden border-r border-[#c6c6cd]">
           <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div data-tutorial="chat-empty-state" className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                 <div className="w-16 h-16 bg-[#dce9ff] rounded-2xl flex items-center justify-center">
                   <span className="material-symbols-outlined text-black text-[32px]">quick_reference_all</span>
                 </div>
@@ -121,6 +121,7 @@ export default function ChatPage() {
           <div className="p-6 bg-white border-t border-[#c6c6cd]">
             <div className="relative max-w-4xl mx-auto">
               <textarea
+                data-tutorial="chat-input"
                 ref={textareaRef}
                 value={input}
                 onChange={e => { setInput(e.target.value); autoResize() }}
@@ -145,7 +146,7 @@ export default function ChatPage() {
         </section>
 
         {/* Vista Previa panel */}
-        <aside className="w-[340px] bg-white flex-col shrink-0 hidden xl:flex border-l border-[#c6c6cd]">
+        <aside data-tutorial="preview-panel" className="w-[340px] bg-white flex-col shrink-0 hidden xl:flex border-l border-[#c6c6cd]">
           <div className="h-14 px-4 flex items-center justify-between border-b border-[#c6c6cd]">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-black">description</span>

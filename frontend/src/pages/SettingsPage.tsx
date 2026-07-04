@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import TopBar from '../components/TopBar'
+import { TUTORIAL_STORAGE_KEY } from '../components/Tutorial'
 import { documentsApi, healthApi } from '../services/api'
 
 type ReindexState = 'idle' | 'loading' | 'done' | 'error'
@@ -182,6 +183,16 @@ export default function SettingsPage() {
                   Error al re-indexar. Intenta de nuevo.
                 </p>
               )}
+              <button
+                onClick={() => {
+                  localStorage.removeItem(TUTORIAL_STORAGE_KEY)
+                  window.location.href = '/'
+                }}
+                className="w-full py-2 border border-[#c6c6cd] text-[11px] font-bold uppercase tracking-widest rounded-lg hover:bg-[#eff4ff] transition-colors flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">school</span>
+                Ver tutorial de nuevo
+              </button>
             </div>
 
             <div className="bg-black text-white p-6 rounded-xl relative overflow-hidden">

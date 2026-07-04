@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
+import Tutorial from './components/Tutorial'
 import UploadModal from './components/UploadModal'
 import ChatPage from './pages/ChatPage'
 import DocumentsPage from './pages/DocumentsPage'
@@ -13,6 +14,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <Tutorial />
       <Sidebar onUploadClick={() => setShowUpload(true)} />
 
       {showUpload && (
