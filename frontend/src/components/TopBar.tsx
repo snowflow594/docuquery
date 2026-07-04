@@ -24,7 +24,7 @@ export default function TopBar() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     const q = query.trim()
-    if (!q || searching) return
+    if (!q || q.length < 3 || searching) return
     setSearching(true)
     setExpanded(null)
     try {
