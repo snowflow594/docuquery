@@ -2,16 +2,19 @@
 
 Sistema RAG (Retrieval-Augmented Generation) que permite hacer preguntas en lenguaje natural sobre documentos PDF. Sube un PDF, haz una pregunta y obtén una respuesta generada por IA basada exclusivamente en el contenido del documento, con citas de los fragmentos utilizados.
 
+**Demo:** https://docuquery-pi.vercel.app
+
 ## Stack
 
 | Capa | Tecnología |
 |------|------------|
-| **Frontend** | React 19 + Vite + TypeScript + Tailwind CSS |
-| **Backend** | Python + FastAPI (async) |
-| **Base de datos** | PostgreSQL 16 + pgvector (extensión para búsqueda vectorial) |
-| **Embeddings** | sentence-transformers `all-MiniLM-L6-v2` (384 dimensiones) |
-| **LLM** | Claude API (Anthropic) — modelo `claude-haiku-4-5` |
+| **Frontend** | React 18 + Vite + TypeScript + Tailwind CSS |
+| **Backend** | Python 3.11 + FastAPI (async) |
+| **Base de datos** | PostgreSQL 16 + pgvector |
+| **Embeddings** | fastembed · `BAAI/bge-small-en-v1.5` (384 dimensiones, ONNX) |
+| **LLM** | Claude API (Anthropic) — `claude-haiku-4-5` |
 | **PDF parsing** | pypdf |
+| **Despliegue** | Vercel + Render + Supabase (free tier) |
 
 ## Arquitectura
 
@@ -34,6 +37,7 @@ Pregunta → embedding → búsqueda coseno → top-k chunks relevantes
 | `POST` | `/documents/upload` | Sube y procesa un PDF (extrae texto, genera embeddings) |
 | `GET` | `/documents/` | Lista todos los documentos indexados |
 | `GET` | `/documents/{id}` | Detalle de un documento |
+| `POST` | `/documents/reindex` | Regenera todos los embeddings |
 
 ### Búsqueda y chat
 
@@ -54,20 +58,22 @@ Pregunta → embedding → búsqueda coseno → top-k chunks relevantes
 
 ```
 docuquery/
-├── docker-compose.yml          # PostgreSQL + pgvector
+├── docker-compose.yml          # PostgreSQL + pgvector (solo desarrollo local)
+├── render.yaml                 # Configuración de despliegue en Render
+├── supabase_schema.sql         # Schema SQL para Supabase
 ├── backend/
 │   ├── requirements.txt
 │   ├── run.py
 │   └── app/
 │       ├── main.py             # FastAPI + CORS + lifespan
 │       ├── config.py           # Variables de entorno (pydantic-settings)
-│       ├── database.py         # Engine async SQLAlchemy
+│       ├── database.py         # Engine async SQLAlchemy + SSL para cloud
 │       ├── models/             # ORM: Document, Chunk, Conversation, Message
 │       ├── schemas/            # Pydantic I/O schemas
 │       ├── routers/            # documents, search, chat
 │       └── services/
 │           ├── pdf_processor.py  # Extracción y chunking
-│           ├── embeddings.py     # sentence-transformers
+│           ├── embeddings.py     # fastembed (ONNX)
 │           ├── retrieval.py      # Búsqueda coseno con pgvector
 │           └── llm.py            # Integración con Claude API
 └── frontend/
@@ -75,22 +81,22 @@ docuquery/
         ├── App.tsx             # Routing principal
         ├── services/api.ts     # Cliente HTTP (axios)
         ├── components/
-        │   ├── Sidebar.tsx     # Navegación lateral
-        │   ├── TopBar.tsx      # Barra superior
-        │   └── UploadModal.tsx # Modal de carga de PDFs
+        │   ├── Sidebar.tsx
+        │   ├── TopBar.tsx
+        │   └── UploadModal.tsx
         └── pages/
-            ├── ChatPage.tsx        # Interfaz de chat con RAG
-            ├── DocumentsPage.tsx   # Gestión de documentos
-            ├── HistoryPage.tsx     # Historial de conversaciones
-            └── SettingsPage.tsx    # Configuración del sistema
+            ├── ChatPage.tsx
+            ├── DocumentsPage.tsx
+            ├── HistoryPage.tsx
+            └── SettingsPage.tsx
 ```
 
-## Inicio rápido
+## Desarrollo local
 
 ### Requisitos
 
 - Docker Desktop
-- Python 3.10+
+- Python 3.11+
 - Node.js 18+
 
 ### 1. Base de datos
@@ -115,12 +121,13 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Crea el archivo `.env` en `backend/`:
+Crea el archivo `.env` en `backend/` (ver `backend/.env.example`):
 
 ```env
-DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5433/docuquery
+DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5433/docuquery
 ANTHROPIC_API_KEY=sk-ant-...
 CHAT_MODEL=claude-haiku-4-5
+ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 Inicia el servidor:
@@ -142,21 +149,22 @@ npm run dev
 
 La aplicación estará en `http://localhost:5173`.
 
-## Flujo de uso
-
-1. Abre `http://localhost:5173`
-2. Haz clic en **Subir PDF** y selecciona un documento
-3. Ve a la página **Chat** y escribe una pregunta
-4. La respuesta incluye los fragmentos del documento utilizados como fuente
-5. Revisa el historial de conversaciones en **History**
-
 ## Variables de entorno
 
 | Variable | Descripción | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | Conexión async a PostgreSQL | `postgresql+asyncpg://postgres:password@localhost:5432/docuquery` |
+| `DATABASE_URL` | Conexión async a PostgreSQL (driver psycopg3) | `postgresql+psycopg://postgres:password@localhost:5432/docuquery` |
 | `ANTHROPIC_API_KEY` | API key de Anthropic | — |
 | `CHAT_MODEL` | Modelo de Claude a utilizar | `claude-haiku-4-5` |
+| `ALLOWED_ORIGINS` | Orígenes CORS permitidos, separados por coma | `http://localhost:5173,http://localhost:3000` |
+
+## Despliegue (free tier)
+
+| Servicio | Plataforma | Notas |
+|----------|------------|-------|
+| Frontend | Vercel | Variable `VITE_API_URL` = URL del backend |
+| Backend | Render | `render.yaml` en la raíz del repo |
+| Base de datos | Supabase | Ejecutar `supabase_schema.sql` en el SQL Editor |
 
 ## Fases del proyecto
 
@@ -164,3 +172,4 @@ La aplicación estará en `http://localhost:5173`.
 - [x] Fase 2 — Motor de búsqueda semántica (embeddings + pgvector)
 - [x] Fase 3 — Integración LLM (Claude API + pipeline RAG + historial de conversaciones)
 - [x] Fase 4 — Frontend React (Chat, Documentos, Historial, Ajustes)
+- [x] Fase 5 — Despliegue en producción (Vercel + Render + Supabase)
