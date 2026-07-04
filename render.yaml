@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: docuquery-backend
+    runtime: python
+    rootDir: backend
+    # Pre-descarga el modelo de embeddings durante el build para evitar delay en cold start
+    buildCommand: pip install -r requirements.txt && python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # Rellenar en el dashboard de Render
+      - key: ANTHROPIC_API_KEY
+        sync: false          # Rellenar en el dashboard de Render
+      - key: ALLOWED_ORIGINS
+        sync: false          # Rellenar con la URL de Cloudflare Pages, ej: https://docuquery.pages.dev
+      - key: CHAT_MODEL
+        value: claude-haiku-4-5
+      - key: PYTHON_VERSION
+        value: 3.11.0

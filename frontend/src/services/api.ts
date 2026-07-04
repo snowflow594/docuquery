@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/api' })
+// En producción VITE_API_URL apunta al backend en Render (sin /api al final).
+// En desarrollo el proxy de Vite reescribe /api → http://localhost:8000.
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? '/api',
+})
 
 export interface Document {
   id: string
