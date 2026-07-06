@@ -1,20 +1,29 @@
-from fastembed import TextEmbedding
+import cohere
+from app.config import settings
 
-# BAAI/bge-small-en-v1.5: 384 dims, ONNX runtime (~150MB total vs ~400MB con PyTorch)
-_model: TextEmbedding | None = None
+_client: cohere.Client | None = None
 
 
-def _get_model() -> TextEmbedding:
-    global _model
-    if _model is None:
-        _model = TextEmbedding("BAAI/bge-small-en-v1.5")
-    return _model
+def _get_client() -> cohere.Client:
+    global _client
+    if _client is None:
+        _client = cohere.Client(api_key=settings.COHERE_API_KEY)
+    return _client
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    model = _get_model()
-    return [emb.tolist() for emb in model.embed(texts)]
+    response = _get_client().embed(
+        texts=texts,
+        model="embed-multilingual-light-v3.0",
+        input_type="search_document",
+    )
+    return response.embeddings  # type: ignore[return-value]
 
 
 def embed_query(text: str) -> list[float]:
-    return embed_texts([text])[0]
+    response = _get_client().embed(
+        texts=[text],
+        model="embed-multilingual-light-v3.0",
+        input_type="search_query",
+    )
+    return response.embeddings[0]  # type: ignore[index]
