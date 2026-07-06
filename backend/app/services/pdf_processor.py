@@ -13,7 +13,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     return "\n".join(pages_text).replace("\x00", "")
 
 
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150, max_chars: int = 500_000) -> list[str]:
+def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150, max_chars: int = 200_000) -> list[str]:
     text = " ".join(text.split())
     if len(text) > max_chars:
         text = text[:max_chars]

@@ -10,6 +10,8 @@ from app.services.embeddings import embed_texts
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
+_EMBED_BATCH = 20
+
 
 @router.post("/upload", response_model=DocumentResponse, status_code=201)
 async def upload_document(
@@ -19,28 +21,39 @@ async def upload_document(
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Solo se aceptan archivos PDF")
 
-    MAX_SIZE_MB = 15
+    MAX_SIZE_MB = 5
     contents = await file.read()
     if len(contents) > MAX_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail=f"El PDF no puede superar {MAX_SIZE_MB} MB")
+
     text = extract_text_from_pdf(contents)
+    del contents  # libera RAM del PDF crudo antes de embeddings
 
     if not text.strip():
         raise HTTPException(status_code=422, detail="No se pudo extraer texto del PDF")
 
     chunks = chunk_text(text)
-
-    # embed_texts es CPU-bound, lo corremos en un thread para no bloquear el event loop
-    embeddings = await asyncio.get_event_loop().run_in_executor(None, embed_texts, chunks)
+    del text  # libera RAM del texto completo
 
     document = Document(filename=file.filename, total_chunks=len(chunks))
     db.add(document)
     await db.flush()
 
-    db.add_all([
-        DocumentChunk(document_id=document.id, content=chunk, chunk_index=i, embedding=emb)
-        for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
-    ])
+    # Procesar en lotes pequeños para mantener el pico de RAM bajo
+    loop = asyncio.get_event_loop()
+    for batch_start in range(0, len(chunks), _EMBED_BATCH):
+        batch = chunks[batch_start : batch_start + _EMBED_BATCH]
+        embeddings = await loop.run_in_executor(None, embed_texts, batch)
+        db.add_all([
+            DocumentChunk(
+                document_id=document.id,
+                content=chunk,
+                chunk_index=batch_start + i,
+                embedding=emb,
+            )
+            for i, (chunk, emb) in enumerate(zip(batch, embeddings))
+        ])
+        await db.flush()
 
     await db.commit()
     await db.refresh(document)
@@ -73,11 +86,13 @@ async def reindex_documents(db: AsyncSession = Depends(get_db)):
     if not chunks:
         return {"reindexed": 0}
 
-    texts = [c.content for c in chunks]
-    embeddings = await asyncio.get_event_loop().run_in_executor(None, embed_texts, texts)
-
-    for chunk, emb in zip(chunks, embeddings):
-        chunk.embedding = emb
+    loop = asyncio.get_event_loop()
+    for batch_start in range(0, len(chunks), _EMBED_BATCH):
+        batch = chunks[batch_start : batch_start + _EMBED_BATCH]
+        embeddings = await loop.run_in_executor(None, embed_texts, [c.content for c in batch])
+        for chunk, emb in zip(batch, embeddings):
+            chunk.embedding = emb
+        await db.flush()
 
     await db.commit()
     return {"reindexed": len(chunks)}
