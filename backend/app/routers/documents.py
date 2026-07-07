@@ -60,8 +60,8 @@ async def _process_pdf(document_id: UUID, contents: bytes) -> None:
 
 @router.post("/upload", response_model=DocumentResponse, status_code=201)
 async def upload_document(
-    file: UploadFile = File(...),
     background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
