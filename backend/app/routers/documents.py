@@ -1,9 +1,9 @@
 ﻿from uuid import UUID
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import asyncio
-from app.database import get_db
+from app.database import get_db, AsyncSessionLocal
 from app.models.document import Document, DocumentChunk
 from app.schemas.document import DocumentResponse, DocumentDetailResponse
 from app.services.pdf_processor import extract_text_from_pdf, chunk_text
@@ -14,9 +14,54 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 _EMBED_BATCH = 20
 
 
+async def _process_pdf(document_id: UUID, contents: bytes) -> None:
+    async with AsyncSessionLocal() as db:
+        try:
+            text = await asyncio.to_thread(extract_text_from_pdf, contents)
+            del contents
+
+            if not text.strip():
+                raise ValueError("No text extracted")
+
+            chunks = chunk_text(text)
+            del text
+
+            result = await db.execute(select(Document).where(Document.id == document_id))
+            document = result.scalar_one_or_none()
+            if not document:
+                return
+
+            for batch_start in range(0, len(chunks), _EMBED_BATCH):
+                batch = chunks[batch_start : batch_start + _EMBED_BATCH]
+                embeddings = await asyncio.to_thread(embed_texts, batch)
+                db.add_all([
+                    DocumentChunk(
+                        document_id=document.id,
+                        content=chunk,
+                        chunk_index=batch_start + i,
+                        embedding=emb,
+                    )
+                    for i, (chunk, emb) in enumerate(zip(batch, embeddings))
+                ])
+                await db.flush()
+
+            document.total_chunks = len(chunks)
+            await db.commit()
+
+        except Exception:
+            # Si el procesamiento falla, elimina el registro para que el usuario pueda reintentar
+            async with AsyncSessionLocal() as err_db:
+                result = await err_db.execute(select(Document).where(Document.id == document_id))
+                doc = result.scalar_one_or_none()
+                if doc:
+                    await err_db.delete(doc)
+                    await err_db.commit()
+
+
 @router.post("/upload", response_model=DocumentResponse, status_code=201)
 async def upload_document(
     file: UploadFile = File(...),
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -27,36 +72,12 @@ async def upload_document(
     if len(contents) > MAX_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail=f"El PDF no puede superar {MAX_SIZE_MB} MB")
 
-    text = await asyncio.to_thread(extract_text_from_pdf, contents)
-    del contents  # libera RAM del PDF crudo antes de embeddings
-
-    if not text.strip():
-        raise HTTPException(status_code=422, detail="No se pudo extraer texto del PDF")
-
-    chunks = chunk_text(text)
-    del text  # libera RAM del texto completo
-
-    document = Document(filename=file.filename, total_chunks=len(chunks))
+    document = Document(filename=file.filename, total_chunks=0)
     db.add(document)
-    await db.flush()
-
-    # Procesar en lotes pequeños para mantener el pico de RAM bajo
-    for batch_start in range(0, len(chunks), _EMBED_BATCH):
-        batch = chunks[batch_start : batch_start + _EMBED_BATCH]
-        embeddings = await asyncio.to_thread(embed_texts, batch)
-        db.add_all([
-            DocumentChunk(
-                document_id=document.id,
-                content=chunk,
-                chunk_index=batch_start + i,
-                embedding=emb,
-            )
-            for i, (chunk, emb) in enumerate(zip(batch, embeddings))
-        ])
-        await db.flush()
-
     await db.commit()
     await db.refresh(document)
+
+    background_tasks.add_task(_process_pdf, document.id, contents)
     return document
 
 

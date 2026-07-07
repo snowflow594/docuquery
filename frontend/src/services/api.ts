@@ -50,7 +50,6 @@ export const documentsApi = {
     const form = new FormData()
     form.append('file', file)
     return api.post<Document>('/documents/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: e => {
         if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total))
       },
