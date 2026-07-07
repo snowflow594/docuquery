@@ -35,6 +35,7 @@ export interface Conversation {
   title: string | null
   created_at: string
   messages: ChatMessage[]
+  message_count?: number
 }
 
 export interface ChatResponse {

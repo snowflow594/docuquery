@@ -1,4 +1,5 @@
-﻿from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+﻿from uuid import UUID
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import asyncio
@@ -18,7 +19,7 @@ async def upload_document(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
-    if not file.filename.lower().endswith(".pdf"):
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Solo se aceptan archivos PDF")
 
     MAX_SIZE_MB = 5
@@ -26,7 +27,7 @@ async def upload_document(
     if len(contents) > MAX_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail=f"El PDF no puede superar {MAX_SIZE_MB} MB")
 
-    text = extract_text_from_pdf(contents)
+    text = await asyncio.to_thread(extract_text_from_pdf, contents)
     del contents  # libera RAM del PDF crudo antes de embeddings
 
     if not text.strip():
@@ -40,10 +41,9 @@ async def upload_document(
     await db.flush()
 
     # Procesar en lotes pequeños para mantener el pico de RAM bajo
-    loop = asyncio.get_event_loop()
     for batch_start in range(0, len(chunks), _EMBED_BATCH):
         batch = chunks[batch_start : batch_start + _EMBED_BATCH]
-        embeddings = await loop.run_in_executor(None, embed_texts, batch)
+        embeddings = await asyncio.to_thread(embed_texts, batch)
         db.add_all([
             DocumentChunk(
                 document_id=document.id,
@@ -79,6 +79,16 @@ async def get_document(document_id: str, db: AsyncSession = Depends(get_db)):
     return document
 
 
+@router.delete("/{document_id}", status_code=204)
+async def delete_document(document_id: UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    document = result.scalar_one_or_none()
+    if not document:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    await db.delete(document)
+    await db.commit()
+
+
 @router.post("/reindex")
 async def reindex_documents(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(DocumentChunk))
@@ -86,10 +96,9 @@ async def reindex_documents(db: AsyncSession = Depends(get_db)):
     if not chunks:
         return {"reindexed": 0}
 
-    loop = asyncio.get_event_loop()
     for batch_start in range(0, len(chunks), _EMBED_BATCH):
         batch = chunks[batch_start : batch_start + _EMBED_BATCH]
-        embeddings = await loop.run_in_executor(None, embed_texts, [c.content for c in batch])
+        embeddings = await asyncio.to_thread(embed_texts, [c.content for c in batch])
         for chunk, emb in zip(batch, embeddings):
             chunk.embedding = emb
         await db.flush()
