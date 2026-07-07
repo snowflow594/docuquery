@@ -43,8 +43,12 @@ export default function DocumentsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    await documentsApi.remove(id)
-    setDocs(prev => prev.filter(d => d.id !== id))
+    try {
+      await documentsApi.remove(id)
+      setDocs(prev => prev.filter(d => d.id !== id))
+    } catch {
+      alert('No se pudo eliminar el documento. Inténtalo de nuevo.')
+    }
   }
 
   const fmt = (iso: string) =>

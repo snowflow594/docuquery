@@ -38,9 +38,11 @@ export default function HistoryPage() {
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
-  const totalQueries = conversations.reduce((a, c) => a + (c.messages ?? []).filter(m => m.role === 'user').length, 0)
+  const totalQueries = Math.round(
+    conversations.reduce((a, c) => a + (c.message_count ?? 0), 0) / 2
+  )
   const avgMsgs = conversations.length
-    ? Math.round(conversations.reduce((a, c) => a + (c.messages ?? []).length, 0) / conversations.length)
+    ? Math.round(conversations.reduce((a, c) => a + (c.message_count ?? 0), 0) / conversations.length)
     : 0
 
   return (
@@ -120,7 +122,7 @@ export default function HistoryPage() {
                         </p>
                       </td>
                       <td className="px-6 py-5 align-top">
-                        <span className="text-[12px] font-mono text-[#45464d]">{(conv.messages ?? []).length}</span>
+                        <span className="text-[12px] font-mono text-[#45464d]">{conv.message_count ?? 0}</span>
                       </td>
                       <td className="px-6 py-5 align-top">
                         <button

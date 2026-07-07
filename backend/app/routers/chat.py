@@ -1,6 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.database import get_db
@@ -73,9 +73,20 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/conversations", response_model=list[ConversationSummary])
 async def list_conversations(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Conversation).order_by(Conversation.created_at.desc())
+        select(Conversation, func.count(Message.id).label("message_count"))
+        .outerjoin(Message, Message.conversation_id == Conversation.id)
+        .group_by(Conversation.id)
+        .order_by(Conversation.created_at.desc())
     )
-    return result.scalars().all()
+    return [
+        ConversationSummary(
+            id=conv.id,
+            title=conv.title,
+            created_at=conv.created_at,
+            message_count=count,
+        )
+        for conv, count in result.all()
+    ]
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetail)

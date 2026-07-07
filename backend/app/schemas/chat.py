@@ -34,6 +34,7 @@ class ConversationSummary(BaseModel):
     id: UUID
     title: str | None
     created_at: datetime
+    message_count: int = 0
 
     model_config = {"from_attributes": True}
 
