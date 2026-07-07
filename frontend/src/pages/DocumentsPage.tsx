@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import TopBar from '../components/TopBar'
 import { type Document, documentsApi } from '../services/api'
 
+type Toast = { id: string; type: 'success' | 'error'; message: string }
+
 const statusConfig = {
   ready: { label: 'Ready', dot: 'bg-[#006a61]', text: 'text-[#006a61]', pulse: false },
   processing: { label: 'Processing', dot: 'bg-[#497cff]', text: 'text-[#497cff]', pulse: true },
@@ -14,7 +16,15 @@ export default function DocumentsPage() {
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [toasts, setToasts] = useState<Toast[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const prevDocsRef = useRef<Document[]>([])
+
+  const addToast = useCallback((type: Toast['type'], message: string) => {
+    const id = crypto.randomUUID()
+    setToasts(prev => [...prev, { id, type, message }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
+  }, [])
 
   const loadDocs = useCallback(async () => {
     try {
@@ -32,6 +42,20 @@ export default function DocumentsPage() {
       return () => clearInterval(id)
     }
   }, [docs, loadDocs])
+
+  // Detecta transiciones processing → ready y processing → eliminado
+  useEffect(() => {
+    const prev = prevDocsRef.current
+    prev.filter(d => d.status === 'processing').forEach(pd => {
+      const current = docs.find(d => d.id === pd.id)
+      if (current?.status === 'ready') {
+        addToast('success', `"${pd.filename}" listo para consultas`)
+      } else if (!current) {
+        addToast('error', `No se pudo procesar "${pd.filename}". Inténtalo de nuevo.`)
+      }
+    })
+    prevDocsRef.current = docs
+  }, [docs, addToast])
 
   const handleFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) return
@@ -85,7 +109,7 @@ export default function DocumentsPage() {
                 <span className="material-symbols-outlined text-black text-[28px]">cloud_upload</span>
               </div>
               <h4 className="text-[16px] font-semibold text-[#0b1c30] mb-1">Drag &amp; drop PDF corpus</h4>
-              <p className="text-[13px] text-[#45464d] max-w-[200px]">Hasta 50 MB por archivo</p>
+              <p className="text-[13px] text-[#45464d] max-w-[200px]">Hasta 5 MB por archivo</p>
               <span className="mt-4 text-[#497cff] text-[13px] font-semibold flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px]">attachment</span>
                 Browse local filesystem
@@ -193,6 +217,23 @@ export default function DocumentsPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Toast notifications */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-[13px] font-medium pointer-events-auto max-w-xs ${
+              toast.type === 'success' ? 'bg-[#006a61]' : 'bg-[#ba1a1a]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px] shrink-0">
+              {toast.type === 'success' ? 'check_circle' : 'error'}
+            </span>
+            <span>{toast.message}</span>
+          </div>
+        ))}
       </div>
     </div>
   )
