@@ -12,7 +12,7 @@ class DocumentResponse(BaseModel):
     @computed_field
     @property
     def status(self) -> str:
-        return "ready" if self.total_chunks > 0 else "failed"
+        return "ready" if self.total_chunks > 0 else "processing"
 
     model_config = {"from_attributes": True}
 
