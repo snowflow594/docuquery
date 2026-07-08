@@ -30,6 +30,6 @@ app.include_router(search.router)
 app.include_router(chat.router)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     return {"status": "ok"}
