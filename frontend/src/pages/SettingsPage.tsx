@@ -5,30 +5,11 @@ import { documentsApi, healthApi } from '../services/api'
 
 type ReindexState = 'idle' | 'loading' | 'done' | 'error'
 
-interface SystemEvent {
-  time: string
-  level: 'INFO' | 'DEBUG' | 'WARN' | 'ERROR'
-  message: string
-}
-
-const levelColor: Record<string, string> = {
-  INFO: 'text-[#006a61]',
-  DEBUG: 'text-[#497cff]',
-  WARN: 'text-[#b45309]',
-  ERROR: 'text-[#ba1a1a]',
-}
-
 export default function SettingsPage() {
   const [docCount, setDocCount] = useState(0)
-  const [autoIndex, setAutoIndex] = useState(true)
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
   const [reindexState, setReindexState] = useState<ReindexState>('idle')
   const [reindexedCount, setReindexedCount] = useState(0)
-  const [events, setEvents] = useState<SystemEvent[]>([
-    { time: new Date().toLocaleTimeString(), level: 'INFO', message: 'FastAPI server started successfully' },
-    { time: new Date().toLocaleTimeString(), level: 'DEBUG', message: 'Query execution: 0.243s | Cosine similarity > 0.82' },
-    { time: new Date().toLocaleTimeString(), level: 'INFO', message: 'PostgreSQL connection pool synced. Active: 5 Idle: 3' },
-  ])
 
   useEffect(() => {
     documentsApi.list().then(docs => setDocCount(docs.length)).catch(() => {})
@@ -47,16 +28,6 @@ export default function SettingsPage() {
       setReindexState('error')
     }
   }
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setEvents(prev => [
-        { time: new Date().toLocaleTimeString(), level: 'DEBUG', message: 'Cache heartbeat acknowledged. Health: 100%' },
-        ...prev.slice(0, 5),
-      ])
-    }, 5000)
-    return () => clearInterval(id)
-  }, [])
 
   return (
     <div className="ml-[280px] pt-16 min-h-screen bg-[#f8f9ff]">
@@ -92,8 +63,8 @@ export default function SettingsPage() {
           <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { icon: 'terminal', title: 'FastAPI', sub: 'Application Server', stat: 'Active', extra: 'Port 8000' },
-              { icon: 'database', title: 'pgvector', sub: 'PostgreSQL DB', stat: `${docCount} docs`, extra: 'Docker :5433' },
-              { icon: 'memory', title: 'Embedder', sub: 'Transformer Model', stat: 'all-MiniLM-L6-v2', extra: '384 dims' },
+              { icon: 'database', title: 'pgvector', sub: 'PostgreSQL DB', stat: `${docCount} docs`, extra: 'Supabase' },
+              { icon: 'memory', title: 'Embedder', sub: 'Cohere fastembed', stat: 'embed-multilingual-light-v3.0', extra: '384 dims' },
             ].map(c => (
               <div key={c.title} className="bg-white p-5 border border-[#c6c6cd] rounded-xl hover:shadow-md hover:border-black transition-all">
                 <div className="flex items-center justify-between mb-4">
@@ -124,45 +95,10 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Events Log */}
-          <div className="md:col-span-7 bg-white border border-[#c6c6cd] rounded-xl overflow-hidden">
-            <div className="p-6 border-b border-[#c6c6cd]">
-              <h3 className="text-[20px] font-semibold">Recent System Events</h3>
-            </div>
-            <div className="p-4 space-y-1 font-mono text-[12px]">
-              {events.map((ev, i) => (
-                <div key={i} className="flex gap-4 items-start py-2 border-b border-dashed border-[#c6c6cd] last:border-0">
-                  <span className="text-[#45464d] whitespace-nowrap">{ev.time}</span>
-                  <span className={`font-bold ${levelColor[ev.level]}`}>[{ev.level}]</span>
-                  <span className="flex-1 text-[#0b1c30]">{ev.message}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Config */}
           <div className="md:col-span-5 space-y-6">
             <div className="bg-white p-6 border border-[#c6c6cd] rounded-xl space-y-4">
               <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#45464d]">Instance Configuration</h3>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[14px] font-medium">Automatic Indexing</p>
-                  <p className="text-[13px] text-[#45464d]">Indexar al subir documentos</p>
-                </div>
-                <button
-                  onClick={() => setAutoIndex(v => !v)}
-                  className={`w-10 h-5 rounded-full relative transition-colors ${autoIndex ? 'bg-[#006a61]' : 'bg-[#c6c6cd]'}`}
-                >
-                  <span className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoIndex ? 'right-1' : 'left-1'}`} />
-                </button>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[14px] font-medium">Search Strictness</p>
-                  <p className="text-[13px] text-[#45464d]">Threshold: 0.75</p>
-                </div>
-                <input type="range" className="accent-black w-24" defaultValue={75} />
-              </div>
               <button
                 onClick={handleReindex}
                 disabled={reindexState === 'loading'}
@@ -193,17 +129,6 @@ export default function SettingsPage() {
                 <span className="material-symbols-outlined text-[16px]">school</span>
                 Ver tutorial de nuevo
               </button>
-            </div>
-
-            <div className="bg-black text-white p-6 rounded-xl relative overflow-hidden">
-              <h3 className="text-[20px] font-semibold mb-2">DocuQuery RAG</h3>
-              <p className="text-[13px] opacity-70 mb-4">Backend activo: FastAPI + pgvector + Claude.</p>
-              <button className="px-6 py-2 bg-white text-black text-[11px] font-bold uppercase tracking-widest rounded-lg hover:opacity-90 transition-opacity">
-                Ver Documentación
-              </button>
-              <div className="absolute -right-8 -bottom-8 opacity-10">
-                <span className="material-symbols-outlined text-[120px]">rocket_launch</span>
-              </div>
             </div>
           </div>
         </div>

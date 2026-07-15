@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink } from 'react-router-dom'
 import { searchApi, type Source } from '../services/api'
 
 export default function TopBar() {
@@ -40,29 +39,7 @@ export default function TopBar() {
 
   return (
     <header className="fixed top-0 right-0 left-[280px] h-16 bg-white flex justify-between items-center px-4 border-b border-[#c6c6cd] z-40">
-      <div className="flex items-center gap-8">
-        <span className="text-[20px] font-bold text-[#0b1c30]">DocuQuery Professional</span>
-        <nav className="hidden lg:flex items-center gap-6">
-          {[
-            { label: 'Dashboard', to: '/', end: true },
-            { label: 'Workspaces', to: '/documents', end: false },
-            { label: 'Analytic Logs', to: '/history', end: false },
-          ].map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `text-[11px] font-bold uppercase tracking-widest pb-1 transition-colors ${
-                  isActive ? 'text-black border-b-2 border-black' : 'text-[#45464d] hover:text-black'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
+      <span className="text-[20px] font-bold text-[#0b1c30]">DocuQuery</span>
 
       <div className="flex items-center gap-4">
         {/* Semantic search */}

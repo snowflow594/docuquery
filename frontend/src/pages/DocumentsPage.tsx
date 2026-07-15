@@ -130,30 +130,6 @@ export default function DocumentsPage() {
               </div>
             )}
 
-            <div className="bg-white border border-[#c6c6cd] rounded-xl p-6 space-y-4">
-              <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#0b1c30]">Indexing Strategy</h4>
-              <div>
-                <label className="block text-[13px] text-[#45464d] mb-2">Chunk Size (chars)</label>
-                <div className="flex items-center gap-4">
-                  <input type="range" min={200} max={2000} defaultValue={800} className="flex-1 accent-black" />
-                  <span className="text-[12px] font-mono bg-[#e5eeff] px-2 py-1 border border-[#c6c6cd] rounded">800</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-[13px] text-[#45464d] mb-2">Chunk Overlap</label>
-                <div className="flex items-center gap-4">
-                  <input type="range" min={0} max={500} defaultValue={150} className="flex-1 accent-black" />
-                  <span className="text-[12px] font-mono bg-[#e5eeff] px-2 py-1 border border-[#c6c6cd] rounded">150</span>
-                </div>
-              </div>
-              <label className="flex items-center gap-3 cursor-pointer pt-2 border-t border-[#c6c6cd]">
-                <input type="checkbox" defaultChecked className="rounded" />
-                <span className="text-[13px] font-medium">Enable OCR for scanned PDFs</span>
-              </label>
-              <button className="w-full py-2 border border-black text-black text-[11px] font-bold uppercase tracking-widest hover:bg-[#eff4ff] transition-colors rounded-lg">
-                Apply Parameters
-              </button>
-            </div>
           </div>
 
           {/* Table */}

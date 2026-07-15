@@ -47,33 +47,6 @@ export default function Sidebar({ onUploadClick }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="px-3 pt-4 border-t border-[#c6c6cd] space-y-1">
-        <NavLink
-          to="/settings"
-          end
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${
-              isActive ? 'bg-[#e5eeff] text-black font-semibold' : 'text-[#45464d] hover:bg-[#eff4ff]'
-            }`
-          }
-        >
-          <span className="material-symbols-outlined">dns</span>
-          <span className="text-[14px]">System Status</span>
-        </NavLink>
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#45464d] hover:bg-[#eff4ff] transition-colors">
-          <span className="material-symbols-outlined">help_outline</span>
-          <span className="text-[14px]">Help</span>
-        </button>
-        <div className="mt-4 px-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#dce9ff] flex items-center justify-center">
-            <span className="material-symbols-outlined text-[18px]">account_circle</span>
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#0b1c30]">Admin User</p>
-            <p className="text-[10px] text-[#45464d] uppercase">Enterprise Plan</p>
-          </div>
-        </div>
-      </div>
     </aside>
   )
 }
