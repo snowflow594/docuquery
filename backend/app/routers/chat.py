@@ -52,7 +52,7 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
     if not chunks:
         raise HTTPException(
             status_code=404,
-            detail="No hay documentos indexados para responder. Sube un PDF primero.",
+            detail="No encontré información relevante en tus documentos para responder esta pregunta.",
         )
 
     # 4. Generar respuesta con Claude

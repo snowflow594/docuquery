@@ -11,6 +11,7 @@ async def retrieve_chunks(
     query: str,
     top_k: int = 5,
     document_id: UUID | None = None,
+    min_similarity: float = 0.3,
 ) -> list[dict]:
     """Recupera los chunks más relevantes para una consulta vía búsqueda vectorial.
 
@@ -20,6 +21,10 @@ async def retrieve_chunks(
     query_embedding = await asyncio.get_event_loop().run_in_executor(
         None, embed_query, query
     )
+
+    # cosine_distance = 1 - cosine_similarity, así que similarity >= min_similarity
+    # equivale a distance <= (1 - min_similarity)
+    max_distance = 1 - min_similarity
 
     stmt = (
         select(
@@ -32,6 +37,7 @@ async def retrieve_chunks(
         )
         .join(Document, DocumentChunk.document_id == Document.id)
         .where(DocumentChunk.embedding.isnot(None))
+        .where(DocumentChunk.embedding.cosine_distance(query_embedding) <= max_distance)
     )
 
     if document_id:
