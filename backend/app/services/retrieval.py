@@ -11,7 +11,7 @@ async def retrieve_chunks(
     query: str,
     top_k: int = 5,
     document_id: UUID | None = None,
-    min_similarity: float = 0.3,
+    min_similarity: float = 0.5,
 ) -> list[dict]:
     """Recupera los chunks más relevantes para una consulta vía búsqueda vectorial.
 

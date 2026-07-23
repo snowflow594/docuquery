@@ -8,7 +8,7 @@ class ChatRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
     conversation_id: UUID | None = None
     document_id: UUID | None = None
-    top_k: int = Field(default=5, ge=1, le=20)
+    top_k: int = Field(default=3, ge=1, le=20)
 
     @field_validator("conversation_id", "document_id", mode="before")
     @classmethod
