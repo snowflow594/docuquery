@@ -1,9 +1,12 @@
 import asyncio
+import logging
 from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.document import Document, DocumentChunk
 from app.services.embeddings import embed_query
+
+logger = logging.getLogger(__name__)
 
 
 async def retrieve_chunks(
@@ -11,7 +14,7 @@ async def retrieve_chunks(
     query: str,
     top_k: int = 5,
     document_id: UUID | None = None,
-    min_similarity: float = 0.4,
+    min_similarity: float = 0.35,
 ) -> list[dict]:
     """Recupera los chunks más relevantes para una consulta vía búsqueda vectorial.
 
@@ -46,6 +49,14 @@ async def retrieve_chunks(
     stmt = stmt.order_by("distance").limit(top_k)
 
     result = await db.execute(stmt)
+    rows = result.all()
+    logger.info(
+        "retrieve_chunks: query=%r min_similarity=%.2f returned=%d scores=%s",
+        query[:60],
+        min_similarity,
+        len(rows),
+        [round(1 - r.distance, 4) for r in rows],
+    )
     return [
         {
             "chunk_id": row.id,
@@ -55,5 +66,5 @@ async def retrieve_chunks(
             "chunk_index": row.chunk_index,
             "similarity": round(1 - row.distance, 4),
         }
-        for row in result.all()
+        for row in rows
     ]
